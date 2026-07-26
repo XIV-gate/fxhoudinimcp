@@ -2,7 +2,7 @@
 
 ## Overview
 
-fxhoudinimcp exposes **179 tools** across **22 categories**, covering every major Houdini context.
+fxhoudinimcp exposes **186 tools** across **24 categories**, covering every major Houdini context.
 
 Once connected, your AI assistant can:
 
@@ -62,9 +62,9 @@ Query simulation info, DOP objects, step/reset simulations, and check memory usa
 
 Cook tasks, inspect work items, manage schedulers and dependency graphs.
 
-### COPs / Copernicus (7 tools)
+### COPs / Copernicus (8 tools)
 
-Image nodes, layers, and VDB data access.
+Image nodes, layers, VDB data access, and named Houdini 22 cable wires.
 
 ### HDAs (10 tools)
 
@@ -113,3 +113,13 @@ List, inspect, clear, and write file caches.
 ### Takes (4 tools)
 
 List, create, and switch takes with parameter overrides.
+
+### Character / Houdini 22 (3 tools)
+
+Inspect and validate KineFX skeletons, and inspect APEX graph geometry,
+callbacks, tags, ports, and connections.
+
+### Safety / Audit (3 tools)
+
+Inspect the active access policy, review persistent mutating-command history
+with before/after scene diffs, and explicitly clear the journal.

@@ -14,7 +14,7 @@ from mcp.server.fastmcp import Context
 from mcp.types import ImageContent, TextContent
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 from fxhoudinimcp.tools import result_with_image
 
 
@@ -24,6 +24,7 @@ async def render_viewport(
     output_path: str,
     resolution: list[int] | None = None,
     camera: str | None = None,
+    confirm: bool = False,
 ) -> list[TextContent | ImageContent]:
     """Capture the current 3D viewport to an image file.
 
@@ -31,6 +32,7 @@ async def render_viewport(
         output_path: Image file path.
         resolution: [width, height] in pixels.
         camera: Camera node path.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"output_path": output_path}
@@ -38,6 +40,7 @@ async def render_viewport(
         params["resolution"] = resolution
     if camera is not None:
         params["camera"] = camera
+    params["confirm"] = confirm
     result = await bridge.execute("rendering.render_viewport", params)
     return result_with_image(result)
 
@@ -47,17 +50,20 @@ async def render_quad_view(
     ctx: Context,
     output_path: str,
     resolution: list[int] | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Capture all four viewport panes to separate images.
 
     Args:
         output_path: Base image path; viewport names are appended.
         resolution: [width, height] in pixels.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"output_path": output_path}
     if resolution is not None:
         params["resolution"] = resolution
+    params["confirm"] = confirm
     return await bridge.execute("rendering.render_quad_view", params)
 
 
@@ -85,7 +91,7 @@ async def get_render_settings(ctx: Context, node_path: str) -> dict:
 async def set_render_settings(
     ctx: Context,
     node_path: str,
-    settings: dict[str, Any] = {},
+    settings: dict[str, Any] | None = None,
 ) -> dict:
     """Set render parameters on a ROP node.
 
@@ -96,7 +102,7 @@ async def set_render_settings(
     bridge = _get_bridge(ctx)
     return await bridge.execute(
         "rendering.set_render_settings",
-        {"node_path": node_path, "settings": settings},
+        {"node_path": node_path, "settings": settings or {}},
     )
 
 
@@ -132,17 +138,20 @@ async def start_render(
     ctx: Context,
     node_path: str,
     frame_range: list[float] | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Render a ROP node.
 
     Args:
         node_path: ROP node path.
         frame_range: [start, end] or [start, end, increment].
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"node_path": node_path}
     if frame_range is not None:
         params["frame_range"] = frame_range
+    params["confirm"] = confirm
     return await bridge.execute("rendering.start_render", params)
 
 
@@ -151,17 +160,23 @@ async def render_node_network(
     ctx: Context,
     node_path: str,
     output_path: str,
+    confirm: bool = False,
 ) -> dict:
     """Capture a screenshot of a node's network editor view.
 
     Args:
         node_path: Node path to focus on.
         output_path: Image file path.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
         "rendering.render_node_network",
-        {"node_path": node_path, "output_path": output_path},
+        {
+            "node_path": node_path,
+            "output_path": output_path,
+            "confirm": confirm,
+        },
     )
 
 

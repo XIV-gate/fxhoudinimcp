@@ -7,13 +7,11 @@ via the HTTP bridge.
 from __future__ import annotations
 
 # Built-in
-from typing import Optional
-
 # Third-party
 from mcp.server.fastmcp import Context
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 
 
 @mcp.tool()
@@ -76,7 +74,7 @@ async def create_cop_node(
     ctx: Context,
     parent_path: str,
     cop_type: str,
-    name: Optional[str] = None,
+    name: str | None = None,
 ) -> dict:
     """Create a COP node in the specified network.
 
@@ -108,9 +106,9 @@ async def create_cop_node(
 async def set_cop_flags(
     ctx: Context,
     node_path: str,
-    display: Optional[bool] = None,
-    export_flag: Optional[bool] = None,
-    compress: Optional[bool] = None,
+    display: bool | None = None,
+    export_flag: bool | None = None,
+    compress: bool | None = None,
 ) -> dict:
     """Set flags on a COP node.
 
@@ -134,7 +132,7 @@ async def set_cop_flags(
 @mcp.tool()
 async def list_cop_node_types(
     ctx: Context,
-    filter: Optional[str] = None,
+    filter: str | None = None,
 ) -> dict:
     """List available COP node types.
 
@@ -166,5 +164,33 @@ async def get_cop_vdb(
         {
             "node_path": node_path,
             "output_index": output_index,
+        },
+    )
+
+
+@mcp.tool()
+async def get_cop_cable_info(
+    ctx: Context,
+    node_path: str,
+    output_index: int = 0,
+    include_cooked_wires: bool = False,
+) -> dict:
+    """Inspect Houdini 22 Copernicus connector types and named cable wires.
+
+    One Copernicus output cable can contain multiple ImageLayer, Geometry,
+    NanoVDB, or DetachedAttrib wires with distinct names.
+
+    Args:
+        node_path: Path to the Copernicus node.
+        output_index: Output connector index.
+        include_cooked_wires: Cook the output and report its actual wire bundle.
+    """
+    bridge = _get_bridge(ctx)
+    return await bridge.execute(
+        "cops.get_cop_cable_info",
+        {
+            "node_path": node_path,
+            "output_index": output_index,
+            "include_cooked_wires": include_cooked_wires,
         },
     )

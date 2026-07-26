@@ -13,8 +13,7 @@ from typing import Any
 from mcp.server.fastmcp import Context
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
-
+from fxhoudinimcp.server import _get_bridge, mcp
 
 ###### code.execute_python
 
@@ -25,6 +24,7 @@ async def execute_python(
     code: str,
     justification: str,
     return_expression: str | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Execute arbitrary Python code inside Houdini. LAST RESORT only.
 
@@ -45,9 +45,10 @@ async def execute_python(
         justification: Which dedicated tools you considered and why none
             covers this operation.
         return_expression: Python expression to evaluate after execution.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
-    payload: dict[str, Any] = {"code": code}
+    payload: dict[str, Any] = {"code": code, "confirm": confirm}
     if return_expression is not None:
         payload["return_expression"] = return_expression
     result = await bridge.execute("code.execute_python", payload)
@@ -60,14 +61,22 @@ async def execute_python(
 
 
 @mcp.tool()
-async def execute_hscript(ctx: Context, command: str) -> dict:
+async def execute_hscript(
+    ctx: Context,
+    command: str,
+    confirm: bool = False,
+) -> dict:
     """Execute an HScript command in Houdini.
 
     Args:
         command: HScript command string to execute.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
-    return await bridge.execute("code.execute_hscript", {"command": command})
+    return await bridge.execute(
+        "code.execute_hscript",
+        {"command": command, "confirm": confirm},
+    )
 
 
 ###### code.evaluate_expression
@@ -75,18 +84,27 @@ async def execute_hscript(ctx: Context, command: str) -> dict:
 
 @mcp.tool()
 async def evaluate_expression(
-    ctx: Context, expression: str, language: str = "hscript"
+    ctx: Context,
+    expression: str,
+    language: str = "hscript",
+    confirm: bool = False,
 ) -> dict:
     """Evaluate an expression in Houdini and return its result.
 
     Args:
         expression: Expression string to evaluate.
         language: Expression language, "hscript" or "python".
+        confirm: Must be true when safe mode is active because Python
+            expressions can perform side effects.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
         "code.evaluate_expression",
-        {"expression": expression, "language": language},
+        {
+            "expression": expression,
+            "language": language,
+            "confirm": confirm,
+        },
     )
 
 

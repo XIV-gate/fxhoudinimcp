@@ -9,7 +9,7 @@
   <p align="center">
     The most comprehensive MCP server for SideFX Houdini.
     <br/>
-    179 tools across 22 categories, covering every major Houdini context.
+    186 tools across 24 categories, covering every major Houdini context.
     <br/><br/>
   </p>
 
@@ -53,7 +53,7 @@
 
 A comprehensive [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server for [SideFX Houdini](https://www.sidefx.com/). Connects AI assistants like Claude directly to Houdini's Python API, enabling natural language control over scene building, simulation setup, rendering, and more.
 
-**179 tools**, **8 resources**, and **6 workflow prompts** out of the box.
+**186 tools**, **8 resources**, and **6 workflow prompts** out of the box.
 
 <!-- FEATURES -->
 ## Features
@@ -69,7 +69,7 @@ A comprehensive [MCP](https://modelcontextprotocol.io/) (Model Context Protocol)
 | **LOPs/USD** | 18 | Stage inspection, prims, layers, composition, variants, lighting |
 | **DOPs** | 8 | Simulation info, DOP objects, step/reset, memory usage |
 | **PDG/TOPs** | 10 | Cook, work items, schedulers, dependency graphs |
-| **COPs (Copernicus)** | 7 | Image nodes, layers, VDB data |
+| **COPs (Copernicus)** | 8 | Image nodes, layers, VDB data, Houdini 22 cable inspection |
 | **HDAs** | 10 | Create, install, manage Digital Assets and their sections |
 | **Animation** | 9 | Keyframes, playbar control, frame range |
 | **Rendering** | 9 | Viewport capture, render nodes, settings, render launch |
@@ -82,6 +82,8 @@ A comprehensive [MCP](https://modelcontextprotocol.io/) (Model Context Protocol)
 | **CHOPs** | 4 | Channel data, CHOP nodes, export channels to parameters |
 | **Cache** | 4 | List, inspect, clear, write file caches |
 | **Takes** | 4 | List, create, switch takes with parameter overrides |
+| **Character / H22** | 3 | KineFX skeleton validation and APEX graph inspection |
+| **Safety / Audit** | 3 | Access policy, confirmations, persistent before/after activity journal |
 
 <!-- ARCHITECTURE -->
 ## Architecture
@@ -97,7 +99,7 @@ flowchart LR
 
     subgraph MCP[" ⚡ FXHoudini MCP Server "]
         direction TB
-        B1("🔧 179 tools")
+        B1("🔧 186 tools")
         B2("📦 8 Resources")
         B3("💬 6 Prompts")
     end
@@ -260,10 +262,28 @@ Once connected, your AI assistant can:
 | `HOUDINI_PORT` | `8100` | Houdini hwebserver port |
 | `FXHOUDINIMCP_PORT` | `8100` | Port for the Houdini plugin to listen on |
 | `FXHOUDINIMCP_BIND_HOST` | `127.0.0.1` | Address for the Houdini plugin to bind; expose it remotely only on a protected network |
+| `FXHOUDINIMCP_ACCESS_MODE` | `full` | `full`, confirmation-gated `safe`, or `read-only` |
+| `FXHOUDINIMCP_JOURNAL` | `1` | Record mutating commands and before/after scene diffs |
+| `FXHOUDINIMCP_AUDIT_LOG` | `$HOUDINI_USER_PREF_DIR/fxhoudinimcp/audit.jsonl` | Persistent activity-journal path |
+| `FXHOUDINIMCP_TOOL_PROFILE` | `all` | Comma-separated MCP schema profiles: `core`, `sop`, `solaris`, `simulation`, `copernicus`, `animation`, `developer`, `all` |
 | `FXHOUDINIMCP_AUTOSTART` | `1` | Set to `0` to disable auto-start |
 | `FXHOUDINIMCP_AUTO_LAYOUT` | `1` | Set to `0` to disable automatic node layout (preserves manual layouts) |
 | `MCP_TRANSPORT` | `stdio` | MCP transport (`stdio` or `streamable-http`) |
 | `LOG_LEVEL` | `INFO` | Logging level |
+
+`FXHOUDINIMCP_TOOL_PROFILE` reduces the MCP schema exposed to the model without
+changing Houdini cook or model inference speed. Domain profiles always include
+`core` and can be composed, for example `sop,solaris`; `all` exposes the full
+186-tool interface.
+
+Access policy is enforced inside Houdini. In `safe` mode, destructive or
+externally consequential commands require an explicit per-call `confirm=true`;
+`read-only` fails closed for mutations. This confirmation layer is independent
+of Houdini's undo stack. Use `get_access_policy` to inspect it.
+
+The persistent JSONL activity journal records sanitized mutating-command
+parameters, timing, HIP path, and compact before/after node, wiring, and
+targeted-parameter differences. Use `get_activity_journal` to review it.
 
 <!-- DEVELOPMENT -->
 ## Development
@@ -286,7 +306,7 @@ python tests/run_integration.py
 ```
 
 Unit tests mock `hou` and run anywhere. The integration suite in
-`tests/integration/` executes all 179 commands against live Houdini via
+`tests/integration/` executes all 186 commands against live Houdini via
 `hython` — including end-to-end user scenarios (procedural modeling,
 simulation, animation, lookdev) — and prints per-command timing and
 coverage reports; it is skipped automatically when `hou` is not
@@ -299,7 +319,7 @@ server's own bridge).
 
 1. **Houdini Plugin** (`houdini/`): Runs inside Houdini's Python environment. Registers `@hwebserver.apiFunction` endpoints that receive JSON commands. Uses `hdefereval.executeInMainThreadWithResult()` to safely execute `hou.*` calls on the main thread.
 
-2. **MCP Server** (`python/fxhoudinimcp/`): A standalone Python process using FastMCP. Exposes 179 tools, 8 resources, and 6 prompts via the MCP protocol. Forwards tool calls to Houdini over HTTP.
+2. **MCP Server** (`python/fxhoudinimcp/`): A standalone Python process using FastMCP. Exposes 186 tools, 8 resources, and 6 prompts via the MCP protocol. Forwards tool calls to Houdini over HTTP.
 
 3. **Bridge** (`python/fxhoudinimcp/bridge.py`): Async HTTP client that sends commands to Houdini's hwebserver and deserializes responses. Handles connection errors and timeouts.
 

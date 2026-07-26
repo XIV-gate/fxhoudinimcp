@@ -138,7 +138,7 @@ def get_cop_geometry(node_path: str, output_index: int = 0) -> dict:
         raise ValueError(
             f"Failed to get geometry from COP node {node_path} "
             f"at output {output_index}: {e}"
-        )
+        ) from e
 
     if geo is None:
         return {
@@ -276,15 +276,16 @@ def create_cop_node(
         raise ValueError(f"Parent node not found: {parent_path}")
 
     try:
-        if name:
-            node = parent.createNode(cop_type, name)
-        else:
-            node = parent.createNode(cop_type)
+        node = (
+            parent.createNode(cop_type, name)
+            if name
+            else parent.createNode(cop_type)
+        )
     except hou.OperationFailed as e:
         raise ValueError(
             f"Failed to create COP node of type '{cop_type}' "
             f"under {parent_path}: {e}"
-        )
+        ) from e
 
     _focus_network_editor(node)
 
@@ -410,7 +411,7 @@ def get_cop_vdb(node_path: str, output_index: int = 0) -> dict:
         raise ValueError(
             f"Failed to get geometry from COP node {node_path} "
             f"at output {output_index}: {e}"
-        )
+        ) from e
 
     if geo is None:
         return {
@@ -478,6 +479,66 @@ def get_cop_vdb(node_path: str, output_index: int = 0) -> dict:
     }
 
 
+###### cops.get_cop_cable_info
+
+def get_cop_cable_info(
+    node_path: str,
+    output_index: int = 0,
+    include_cooked_wires: bool = False,
+) -> dict:
+    """Inspect Copernicus connector types and named cable wires.
+
+    Houdini 22 Copernicus cables can carry multiple named ImageLayer,
+    Geometry, NanoVDB, and DetachedAttrib wires through one connector.
+    """
+    node = _get_cop_node(node_path)
+    if not hasattr(node, "outputCableStructure"):
+        raise ValueError(
+            f"Node {node_path} does not expose Houdini 22 Copernicus cables"
+        )
+
+    try:
+        structure = node.outputCableStructure(output_index)
+    except Exception as exc:
+        raise ValueError(
+            f"Could not inspect output cable {output_index} on {node_path}: {exc}"
+        ) from exc
+
+    wires = []
+    for index in range(structure.wireCount()):
+        wires.append({
+            "index": index,
+            "name": structure.wireName(index),
+            "data_type": structure.wireDataType(index),
+            "appearance_index": structure.appearanceIndex(index),
+        })
+
+    result = {
+        "node_path": node.path(),
+        "output_index": output_index,
+        "input_data_types": list(node.inputDataTypes()),
+        "output_data_types": list(node.outputDataTypes()),
+        "wire_count": len(wires),
+        "wires": wires,
+        "cooked": False,
+    }
+
+    if include_cooked_wires:
+        cable = node.cable(output_index)
+        cooked_wires = []
+        for index in range(cable.wireCount()):
+            cooked_wires.append({
+                "index": index,
+                "name": cable.wireName(index),
+                "data_type": cable.wireDataTypeByIndex(index),
+                "appearance_index": cable.indexToAppearance(index),
+            })
+        result["cooked"] = True
+        result["cooked_wires"] = cooked_wires
+
+    return result
+
+
 ###### Registration
 
 register_handler("cops.get_cop_info", get_cop_info)
@@ -487,3 +548,4 @@ register_handler("cops.create_cop_node", create_cop_node)
 register_handler("cops.set_cop_flags", set_cop_flags)
 register_handler("cops.list_cop_node_types", list_cop_node_types)
 register_handler("cops.get_cop_vdb", get_cop_vdb)
+register_handler("cops.get_cop_cable_info", get_cop_cable_info)

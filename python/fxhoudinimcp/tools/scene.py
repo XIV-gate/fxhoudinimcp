@@ -7,14 +7,12 @@ via the HTTP bridge.
 from __future__ import annotations
 
 # Built-in
-from typing import Optional
-
 # Third-party
 from mcp.server.fastmcp import Context
 
 # Internal
 from fxhoudinimcp.errors import ConnectionError as HoudiniConnectionError
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 
 
 @mcp.tool()
@@ -59,39 +57,57 @@ async def get_scene_info(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def new_scene(ctx: Context, save_current: bool = False) -> dict:
+async def new_scene(
+    ctx: Context,
+    save_current: bool = False,
+    confirm: bool = False,
+) -> dict:
     """Create a new empty Houdini scene.
 
     Args:
         save_current: Save the current scene before clearing.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
-        "scene.new_scene", {"save_current": save_current}
+        "scene.new_scene",
+        {"save_current": save_current, "confirm": confirm},
     )
 
 
 @mcp.tool()
-async def save_scene(ctx: Context, file_path: Optional[str] = None) -> dict:
+async def save_scene(
+    ctx: Context,
+    file_path: str | None = None,
+    confirm: bool = False,
+) -> dict:
     """Save the current Houdini scene to disk.
 
     Args:
         file_path: Destination path; defaults to the current hip file.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict = {}
     if file_path is not None:
         params["file_path"] = file_path
+    params["confirm"] = confirm
     return await bridge.execute("scene.save_scene", params)
 
 
 @mcp.tool()
-async def load_scene(ctx: Context, file_path: str, merge: bool = False) -> dict:
+async def load_scene(
+    ctx: Context,
+    file_path: str,
+    merge: bool = False,
+    confirm: bool = False,
+) -> dict:
     """Open or merge a Houdini hip file.
 
     Args:
         file_path: Path to the hip file to open.
         merge: Merge into the current scene instead of replacing it.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
@@ -99,6 +115,7 @@ async def load_scene(ctx: Context, file_path: str, merge: bool = False) -> dict:
         {
             "file_path": file_path,
             "merge": merge,
+            "confirm": confirm,
         },
     )
 
@@ -108,7 +125,7 @@ async def import_file(
     ctx: Context,
     file_path: str,
     parent_path: str = "/obj",
-    node_name: Optional[str] = None,
+    node_name: str | None = None,
 ) -> dict:
     """Import a geometry, USD, or Alembic file into the scene.
 
@@ -132,7 +149,8 @@ async def export_file(
     ctx: Context,
     node_path: str,
     file_path: str,
-    frame_range: Optional[list[float]] = None,
+    frame_range: list[float] | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Export a node's output to a file on disk.
 
@@ -140,6 +158,7 @@ async def export_file(
         node_path: Path to the node to export.
         file_path: Destination file path.
         frame_range: Frame range as [start, end] or [start, end, step].
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict = {
@@ -148,6 +167,7 @@ async def export_file(
     }
     if frame_range is not None:
         params["frame_range"] = frame_range
+    params["confirm"] = confirm
     return await bridge.execute("scene.export_file", params)
 
 

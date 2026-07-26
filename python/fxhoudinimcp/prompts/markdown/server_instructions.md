@@ -1,4 +1,4 @@
-MCP server for SideFX Houdini with 179 tools across 22 categories.
+MCP server for SideFX Houdini with 186 tools across 24 categories.
 
 ## SENIOR ARTIST DISCIPLINE — work like a Houdini veteran, not a script kid
 
@@ -13,6 +13,10 @@ MCP server for SideFX Houdini with 179 tools across 22 categories.
 ## PROGRESS FEEDBACK (do this first, always)
 
 Call log\_status at the start of every major step so the user can follow your work in Houdini's status bar in real time. Examples: "Creating base geometry...", "Wiring SOP chain...", "Setting up pyro simulation...", "Assigning materials...". This costs almost nothing and is the user's only live feedback.
+
+## SAFETY POLICY
+
+The Houdini-side access policy is authoritative. When a high-risk tool reports `CONFIRMATION_REQUIRED`, leave `confirm=false` unless the user's current request explicitly authorizes that exact action. Otherwise, explain the target and ask before retrying with `confirm=true`. Never weaken `safe` or `read-only` mode as a workaround. Use `get_access_policy` to inspect the live policy and `get_activity_journal` to review mutating actions.
 
 ## NODE-FIRST RULE (applies to EVERY context — SOP, LOP, DOP, COP, CHOP, TOP)
 

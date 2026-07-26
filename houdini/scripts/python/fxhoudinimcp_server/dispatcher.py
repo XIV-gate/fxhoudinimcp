@@ -13,7 +13,8 @@ import logging
 import threading
 import time
 import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # Third-party (hdefereval is only available in graphical Houdini sessions)
 try:
@@ -21,6 +22,10 @@ try:
     HAS_HDEFEREVAL = True
 except ImportError:
     HAS_HDEFEREVAL = False
+
+# Internal
+from fxhoudinimcp_server import journal
+from fxhoudinimcp_server.policy import authorize, is_read_only_command
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +77,34 @@ def dispatch(command: str, params: dict[str, Any]) -> dict[str, Any]:
             },
         }
 
+    clean_params, policy_error = authorize(command, params)
+    if policy_error is not None:
+        policy_error["timing_ms"] = 0.0
+        return policy_error
+
     start_time = time.time()
+    should_journal = (
+        not is_read_only_command(command)
+        and not command.startswith("audit.")
+    )
 
     def _execute():
+        before = None
+        if should_journal:
+            try:
+                before = journal.capture_scene_state(clean_params)
+            except Exception:
+                logger.debug(
+                    "Failed to capture pre-command scene state",
+                    exc_info=True,
+                )
+
+        execution_start = time.time()
         try:
-            result = handler(**params)
-            return {"status": "success", "data": result}
+            handler_result = handler(**clean_params)
+            result = {"status": "success", "data": handler_result}
         except Exception as e:
-            return {
+            result = {
                 "status": "error",
                 "error": {
                     "code": type(e).__name__,
@@ -87,9 +112,34 @@ def dispatch(command: str, params: dict[str, Any]) -> dict[str, Any]:
                     "traceback": traceback.format_exc(),
                 },
             }
+        if should_journal:
+            after = None
+            try:
+                after = journal.capture_scene_state(clean_params)
+            except Exception:
+                logger.debug(
+                    "Failed to capture post-command scene state",
+                    exc_info=True,
+                )
+            try:
+                journal.record(
+                    command=command,
+                    params=clean_params,
+                    success=result["status"] == "success",
+                    timing_ms=(time.time() - execution_start) * 1000,
+                    before=before,
+                    after=after,
+                    error=result.get("error"),
+                )
+            except Exception:
+                logger.debug("Failed to record MCP activity", exc_info=True)
+        return result
 
     try:
-        if HAS_HDEFEREVAL:
+        if (
+            HAS_HDEFEREVAL
+            and threading.current_thread() is not threading.main_thread()
+        ):
             # Run hdefereval call in a worker thread so we can enforce a timeout
             container: dict[str, Any] = {}
 
@@ -130,7 +180,9 @@ def dispatch(command: str, params: dict[str, Any]) -> dict[str, Any]:
             else:
                 result = container["result"]
         else:
-            # Fallback for hython (single-threaded, no hdefereval needed)
+            # Hython and nested calls already running on Houdini's main thread
+            # can execute directly. Re-dispatching those through hdefereval
+            # would deadlock until the timeout expires.
             result = _execute()
     except Exception as e:
         result = {

@@ -7,13 +7,13 @@ via the HTTP bridge.
 from __future__ import annotations
 
 # Built-in
-from typing import Any, Optional
+from typing import Any
 
 # Third-party
 from mcp.server.fastmcp import Context
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 
 
 @mcp.tool()
@@ -57,7 +57,8 @@ async def get_cache_status(ctx: Context, node_path: str) -> dict:
 async def clear_cache(
     ctx: Context,
     node_path: str,
-    frame_range: Optional[list[int]] = None,
+    frame_range: list[int] | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Delete cached files on disk for a cache node.
 
@@ -65,11 +66,13 @@ async def clear_cache(
         ctx: MCP context.
         node_path: Path to the cache node.
         frame_range: [start, end] frame range to limit deletion.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"node_path": node_path}
     if frame_range is not None:
         params["frame_range"] = frame_range
+    params["confirm"] = confirm
     return await bridge.execute("cache.clear_cache", params)
 
 
@@ -77,7 +80,8 @@ async def clear_cache(
 async def write_cache(
     ctx: Context,
     node_path: str,
-    frame_range: Optional[list[int]] = None,
+    frame_range: list[int] | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Execute a cache node to write files to disk.
 
@@ -85,9 +89,11 @@ async def write_cache(
         ctx: MCP context.
         node_path: Path to the cache node.
         frame_range: [start, end] frame range to render.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"node_path": node_path}
     if frame_range is not None:
         params["frame_range"] = frame_range
+    params["confirm"] = confirm
     return await bridge.execute("cache.write_cache", params)

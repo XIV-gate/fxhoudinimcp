@@ -15,7 +15,7 @@ from mcp.server.fastmcp import Context
 from mcp.types import ImageContent, TextContent
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 from fxhoudinimcp.tools import result_with_image
 
 
@@ -162,6 +162,7 @@ async def capture_screenshot(
     ctx: Context,
     output_path: str,
     pane_name: str | None = None,
+    confirm: bool = False,
 ) -> list[TextContent | ImageContent]:
     """Capture a screenshot of the viewport or a specific pane tab.
 
@@ -172,11 +173,13 @@ async def capture_screenshot(
     Args:
         output_path: Image file path.
         pane_name: Pane tab name.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"output_path": output_path}
     if pane_name is not None:
         params["pane_name"] = pane_name
+    params["confirm"] = confirm
     result = await bridge.execute("viewport.capture_screenshot", params)
     return result_with_image(result)
 
@@ -186,6 +189,7 @@ async def capture_network_editor(
     ctx: Context,
     output_path: str,
     node_path: str | None = None,
+    confirm: bool = False,
 ) -> list[TextContent | ImageContent]:
     """Capture a screenshot of the network editor.
 
@@ -196,11 +200,13 @@ async def capture_network_editor(
     Args:
         output_path: Image file path.
         node_path: Node path to navigate to before capture.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     params: dict[str, Any] = {"output_path": output_path}
     if node_path is not None:
         params["node_path"] = node_path
+    params["confirm"] = confirm
     result = await bridge.execute("viewport.capture_network_editor", params)
     return result_with_image(result)
 

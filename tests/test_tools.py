@@ -29,8 +29,11 @@ class TestSceneTools:
     @pytest.mark.asyncio
     async def test_new_scene(self, mock_ctx, mock_bridge):
         mock_bridge.execute.return_value = {"created": True}
-        result = await new_scene(mock_ctx, save_current=True)
-        mock_bridge.execute.assert_called_once_with("scene.new_scene", {"save_current": True})
+        await new_scene(mock_ctx, save_current=True)
+        mock_bridge.execute.assert_called_once_with(
+            "scene.new_scene",
+            {"save_current": True, "confirm": False},
+        )
 
     @pytest.mark.asyncio
     async def test_connection_status_success(self, mock_ctx, mock_bridge):
@@ -60,7 +63,7 @@ class TestNodeTools:
     @pytest.mark.asyncio
     async def test_create_node_required_params(self, mock_ctx, mock_bridge):
         mock_bridge.execute.return_value = {"path": "/obj/geo1/box1"}
-        result = await create_node(mock_ctx, parent_path="/obj/geo1", node_type="box")
+        await create_node(mock_ctx, parent_path="/obj/geo1", node_type="box")
         mock_bridge.execute.assert_called_once_with(
             "nodes.create_node",
             {"parent_path": "/obj/geo1", "node_type": "box"},
@@ -91,7 +94,7 @@ class TestCodeTools:
         )
         mock_bridge.execute.assert_called_once_with(
             "code.execute_python",
-            {"code": "print('hi')"},
+            {"code": "print('hi')", "confirm": False},
         )
         # The justification is echoed back, never forwarded to Houdini.
         assert result["justification"]
@@ -106,7 +109,11 @@ class TestCodeTools:
         )
         mock_bridge.execute.assert_called_once_with(
             "code.execute_python",
-            {"code": "x = 1 + 1", "return_expression": "x"},
+            {
+                "code": "x = 1 + 1",
+                "confirm": False,
+                "return_expression": "x",
+            },
         )
 
     @pytest.mark.asyncio
@@ -136,6 +143,43 @@ class TestWorkflowTools:
                 "name": "pyro_sim",
             },
         )
+
+
+@pytest.mark.asyncio
+async def test_high_risk_tools_expose_confirmation_flag():
+    """Every safe-mode high-risk command must be confirmable through MCP."""
+    from fxhoudinimcp.server import mcp
+
+    high_risk_tools = {
+        "clear_activity_journal",
+        "clear_cache",
+        "write_cache",
+        "evaluate_expression",
+        "execute_hscript",
+        "execute_python",
+        "create_hda",
+        "install_hda",
+        "reload_hda",
+        "set_hda_section_content",
+        "uninstall_hda",
+        "update_hda",
+        "delete_node",
+        "render_node_network",
+        "render_quad_view",
+        "render_viewport",
+        "start_render",
+        "export_file",
+        "load_scene",
+        "new_scene",
+        "save_scene",
+        "capture_network_editor",
+        "capture_screenshot",
+    }
+    schemas = {tool.name: tool.inputSchema for tool in await mcp.list_tools()}
+
+    assert not high_risk_tools - schemas.keys()
+    for tool_name in high_risk_tools:
+        assert "confirm" in schemas[tool_name]["properties"], tool_name
 
 
 class TestMaterialTools:

@@ -7,19 +7,17 @@ via the HTTP bridge.
 from __future__ import annotations
 
 # Built-in
-from typing import Optional
-
 # Third-party
 from mcp.server.fastmcp import Context
 
 # Internal
-from fxhoudinimcp.server import mcp, _get_bridge
+from fxhoudinimcp.server import _get_bridge, mcp
 
 
 @mcp.tool()
 async def list_installed_hdas(
     ctx: Context,
-    filter: Optional[str] = None,
+    filter: str | None = None,
 ) -> dict:
     """List all installed HDA files and their definitions.
 
@@ -37,9 +35,9 @@ async def list_installed_hdas(
 @mcp.tool()
 async def get_hda_info(
     ctx: Context,
-    node_path: Optional[str] = None,
-    hda_file: Optional[str] = None,
-    type_name: Optional[str] = None,
+    node_path: str | None = None,
+    hda_file: str | None = None,
+    type_name: str | None = None,
 ) -> dict:
     """Get detailed information about an HDA definition.
 
@@ -65,6 +63,7 @@ async def install_hda(
     ctx: Context,
     file_path: str,
     force: bool = False,
+    confirm: bool = False,
 ) -> dict:
     """Install an HDA file into the current session.
 
@@ -72,6 +71,7 @@ async def install_hda(
         ctx: MCP context.
         file_path: HDA file path.
         force: Force reinstall even if already loaded.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
@@ -79,32 +79,49 @@ async def install_hda(
         {
             "file_path": file_path,
             "force": force,
+            "confirm": confirm,
         },
     )
 
 
 @mcp.tool()
-async def uninstall_hda(ctx: Context, file_path: str) -> dict:
+async def uninstall_hda(
+    ctx: Context,
+    file_path: str,
+    confirm: bool = False,
+) -> dict:
     """Uninstall an HDA file from the current session.
 
     Args:
         ctx: MCP context.
         file_path: HDA file path.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
-    return await bridge.execute("hda.uninstall_hda", {"file_path": file_path})
+    return await bridge.execute(
+        "hda.uninstall_hda",
+        {"file_path": file_path, "confirm": confirm},
+    )
 
 
 @mcp.tool()
-async def reload_hda(ctx: Context, file_path: str) -> dict:
+async def reload_hda(
+    ctx: Context,
+    file_path: str,
+    confirm: bool = False,
+) -> dict:
     """Reload an HDA file from disk.
 
     Args:
         ctx: MCP context.
         file_path: HDA file path.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
-    return await bridge.execute("hda.reload_hda", {"file_path": file_path})
+    return await bridge.execute(
+        "hda.reload_hda",
+        {"file_path": file_path, "confirm": confirm},
+    )
 
 
 @mcp.tool()
@@ -115,6 +132,7 @@ async def create_hda(
     type_name: str,
     label: str,
     version: str = "1.0",
+    confirm: bool = False,
 ) -> dict:
     """Create a new HDA from an existing subnet node.
 
@@ -125,6 +143,7 @@ async def create_hda(
         type_name: Operator type name.
         label: Human-readable label.
         version: Version string.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
@@ -135,20 +154,29 @@ async def create_hda(
             "type_name": type_name,
             "label": label,
             "version": version,
+            "confirm": confirm,
         },
     )
 
 
 @mcp.tool()
-async def update_hda(ctx: Context, node_path: str) -> dict:
+async def update_hda(
+    ctx: Context,
+    node_path: str,
+    confirm: bool = False,
+) -> dict:
     """Save the current node contents back to its HDA definition.
 
     Args:
         ctx: MCP context.
         node_path: Node path.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
-    return await bridge.execute("hda.update_hda", {"node_path": node_path})
+    return await bridge.execute(
+        "hda.update_hda",
+        {"node_path": node_path, "confirm": confirm},
+    )
 
 
 @mcp.tool()
@@ -194,6 +222,7 @@ async def set_hda_section_content(
     node_path: str,
     section_name: str,
     content: str,
+    confirm: bool = False,
 ) -> dict:
     """Write content to a specific section in an HDA definition.
 
@@ -202,6 +231,7 @@ async def set_hda_section_content(
         node_path: Node path.
         section_name: Section name.
         content: Section content.
+        confirm: Must be true when safe mode is active.
     """
     bridge = _get_bridge(ctx)
     return await bridge.execute(
@@ -210,5 +240,6 @@ async def set_hda_section_content(
             "node_path": node_path,
             "section_name": section_name,
             "content": content,
+            "confirm": confirm,
         },
     )

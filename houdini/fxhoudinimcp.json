@@ -11,6 +11,18 @@
                 "value": "127.0.0.1",
                 "method": "default"
             }
+        },
+        {
+            "FXHOUDINIMCP_ACCESS_MODE": {
+                "value": "full",
+                "method": "default"
+            }
+        },
+        {
+            "FXHOUDINIMCP_JOURNAL": {
+                "value": "1",
+                "method": "default"
+            }
         }
     ],
     "path": "$FXHOUDINIMCP"
