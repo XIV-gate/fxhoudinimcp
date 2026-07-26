@@ -41,6 +41,18 @@ def test_wait_for_current_process_health_accepts_current_pid(monkeypatch):
     assert health["pid"] == os.getpid()
 
 
+def test_hwebserver_binds_to_loopback_by_default(monkeypatch):
+    monkeypatch.delenv("FXHOUDINIMCP_BIND_HOST", raising=False)
+
+    assert startup._hwebserver_settings() == {"ADDRESS": "127.0.0.1"}
+
+
+def test_hwebserver_bind_host_can_be_overridden(monkeypatch):
+    monkeypatch.setenv("FXHOUDINIMCP_BIND_HOST", "192.0.2.10")
+
+    assert startup._hwebserver_settings() == {"ADDRESS": "192.0.2.10"}
+
+
 def test_ensure_running_keeps_started_server_without_blocking_probe(monkeypatch):
     calls = []
     monkeypatch.setattr(startup, "_server_started", True)

@@ -18,6 +18,14 @@ _port = 8100
 _validation_thread = None
 
 
+def _hwebserver_settings() -> dict[str, str]:
+    """Return secure-by-default settings for Houdini's HTTP listener."""
+    bind_host = os.environ.get(
+        "FXHOUDINIMCP_BIND_HOST", "127.0.0.1"
+    ).strip()
+    return {"ADDRESS": bind_host or "127.0.0.1"}
+
+
 def _health_url(port: int) -> str:
     return f"http://127.0.0.1:{port}/api"
 
@@ -141,7 +149,11 @@ def start(port: int | None = None) -> None:
     # Start hwebserver if not already running. In Houdini 20.5+ it may already
     # be running for built-in features; hwebserver.run() is idempotent for that
     # case and raises when the requested port cannot be bound.
-    hwebserver.run(_port, debug=False)
+    hwebserver.run(
+        _port,
+        debug=False,
+        settings=_hwebserver_settings(),
+    )
     _server_started = True
     _validate_health_in_background(_port)
 

@@ -259,6 +259,7 @@ Once connected, your AI assistant can:
 | `HOUDINI_HOST` | `localhost` | Houdini host address |
 | `HOUDINI_PORT` | `8100` | Houdini hwebserver port |
 | `FXHOUDINIMCP_PORT` | `8100` | Port for the Houdini plugin to listen on |
+| `FXHOUDINIMCP_BIND_HOST` | `127.0.0.1` | Address for the Houdini plugin to bind; expose it remotely only on a protected network |
 | `FXHOUDINIMCP_AUTOSTART` | `1` | Set to `0` to disable auto-start |
 | `FXHOUDINIMCP_AUTO_LAYOUT` | `1` | Set to `0` to disable automatic node layout (preserves manual layouts) |
 | `MCP_TRANSPORT` | `stdio` | MCP transport (`stdio` or `streamable-http`) |

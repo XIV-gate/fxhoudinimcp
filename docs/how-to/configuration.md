@@ -7,6 +7,7 @@
 | `HOUDINI_HOST` | `localhost` | Houdini host address |
 | `HOUDINI_PORT` | `8100` | Houdini hwebserver port |
 | `FXHOUDINIMCP_PORT` | `8100` | Port for the Houdini plugin to listen on |
+| `FXHOUDINIMCP_BIND_HOST` | `127.0.0.1` | Address for the Houdini plugin to bind; expose it remotely only on a protected network |
 | `FXHOUDINIMCP_AUTOSTART` | `1` | Set to `0` to disable auto-start |
 | `FXHOUDINIMCP_AUTO_LAYOUT` | `1` | Set to `0` to disable automatic node layout |
 | `MCP_TRANSPORT` | `stdio` | MCP transport (`stdio` or `streamable-http`) |
@@ -16,15 +17,19 @@
 
 The Houdini plugin auto-starts when the UI is ready via `uiready.py`, which
 stacks cleanly with other Houdini packages. Startup registers the MCP endpoints,
-starts Houdini's `hwebserver` when needed, and verifies that `mcp.health`
-answers from the current Houdini process before reporting readiness. Disable
-auto-start by setting:
+starts Houdini's `hwebserver` when needed, and validates `mcp.health` in the
+background so the UI event loop remains responsive. Disable auto-start by
+setting:
 
 ``` shell
 export FXHOUDINIMCP_AUTOSTART=0
 ```
 
 You can still toggle the server manually using the **MCP Server** shelf tool.
+
+The listener is restricted to `127.0.0.1` by default because MCP tools can
+execute code in Houdini. Set `FXHOUDINIMCP_BIND_HOST=0.0.0.0` only when remote
+access is intentional and the network is protected.
 
 If an assistant cannot reach Houdini, use `get_houdini_connection_status` to
 return structured diagnostics without raising a tool error. If port `8100` is

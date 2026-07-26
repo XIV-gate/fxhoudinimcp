@@ -5,6 +5,12 @@
                 "value": "$HOUDINI_USER_PREF_DIR/fxhoudinimcp/houdini",
                 "method": "default"
             }
+        },
+        {
+            "FXHOUDINIMCP_BIND_HOST": {
+                "value": "127.0.0.1",
+                "method": "default"
+            }
         }
     ],
     "path": "$FXHOUDINIMCP"
