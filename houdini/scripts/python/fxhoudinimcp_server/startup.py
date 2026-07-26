@@ -8,12 +8,14 @@ from __future__ import annotations
 # Built-in
 import json
 import os
+import threading
 import time
 import urllib.parse
 import urllib.request
 
 _server_started = False
 _port = 8100
+_validation_thread = None
 
 
 def _health_url(port: int) -> str:
@@ -63,6 +65,55 @@ def _wait_for_current_process_health(
     return last_health
 
 
+def _validate_health_in_background(port: int) -> None:
+    """Validate the GUI web server after the UI thread is released.
+
+    Houdini's GUI serves Python hwebserver handlers through its UI event
+    loop.  Performing the HTTP health request synchronously from
+    ``uiready.py`` blocks that same loop, so the server cannot answer until
+    startup returns.  Run the validation on a worker instead.
+    """
+    global _server_started, _validation_thread
+
+    def _validate() -> None:
+        global _server_started
+
+        health = _wait_for_current_process_health(port)
+        if health is None:
+            if _port == port:
+                _server_started = False
+            print(
+                f"[fxhoudinimcp] Server on port {port} did not answer mcp.health"
+            )
+            return
+
+        health_pid = health.get("pid")
+        if health_pid != os.getpid():
+            if _port == port:
+                _server_started = False
+            print(
+                f"[fxhoudinimcp] Server validation failed: port {port} is owned by "
+                f"Houdini pid {health_pid}, current pid {os.getpid()}"
+            )
+            return
+
+        print(
+            "[fxhoudinimcp] Server ready on port {} "
+            "(Houdini {}, pid {})".format(
+                port,
+                health.get("houdini_version", "unknown"),
+                health_pid,
+            )
+        )
+
+    _validation_thread = threading.Thread(
+        target=_validate,
+        name="fxhoudinimcp-health",
+        daemon=True,
+    )
+    _validation_thread.start()
+
+
 def start(port: int | None = None) -> None:
     """Start the FXHoudini-MCP server.
 
@@ -79,49 +130,20 @@ def start(port: int | None = None) -> None:
 
     _port = port or int(os.environ.get("FXHOUDINIMCP_PORT", "8100"))
 
-    # Import handlers to trigger registration via register_handler() calls
-    from fxhoudinimcp_server import handlers  # noqa: F401
-
-    # Import hwebserver_app to register the API functions
-    from fxhoudinimcp_server import hwebserver_app  # noqa: F401
-
-    # Start hwebserver if not already running. In Houdini 20.5+ it may already
-    # be running for built-in features; in that case registering the functions
-    # above is enough. Either way, prove the HTTP endpoint is reachable before
-    # advertising readiness.
     import hwebserver
 
-    run_error = None
-    try:
-        hwebserver.run(_port, debug=False)
-    except Exception as exc:
-        run_error = exc
-
-    health = _wait_for_current_process_health(_port)
-    if health is None:
-        _server_started = False
-        detail = f": {run_error}" if run_error is not None else ""
-        raise RuntimeError(
-            f"hwebserver did not answer mcp.health on port {_port}{detail}"
-        )
-
-    health_pid = health.get("pid")
-    if health_pid != os.getpid():
-        _server_started = False
-        raise RuntimeError(
-            "hwebserver port {} is owned by another Houdini process "
-            "(pid {}), current pid {}".format(_port, health_pid, os.getpid())
-        )
-
-    _server_started = True
-    print(
-        "[fxhoudinimcp] Server ready on port {} "
-        "(Houdini {}, pid {})".format(
-            _port,
-            health.get("houdini_version", "unknown"),
-            health.get("pid", "unknown"),
-        )
+    # Import handlers and the web app to trigger command/API registration.
+    from fxhoudinimcp_server import (
+        handlers,  # noqa: F401
+        hwebserver_app,  # noqa: F401
     )
+
+    # Start hwebserver if not already running. In Houdini 20.5+ it may already
+    # be running for built-in features; hwebserver.run() is idempotent for that
+    # case and raises when the requested port cannot be bound.
+    hwebserver.run(_port, debug=False)
+    _server_started = True
+    _validate_health_in_background(_port)
 
 
 def stop() -> None:
@@ -148,10 +170,6 @@ def get_port() -> int:
 
 def ensure_running() -> None:
     """Start the server if it's not already running."""
-    global _server_started
     if _server_started:
-        health = _wait_for_current_process_health(_port, timeout_seconds=0.5)
-        if health is not None and health.get("pid") == os.getpid():
-            return
-        _server_started = False
+        return
     start()
